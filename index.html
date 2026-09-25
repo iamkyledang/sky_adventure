@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sky's Adventure</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+        <div id="progress-flag">🏁</div>
+      </div>
+
+      <div id="hud">
+        <div class="hud-item"><span class="hud-label">Distance</span><span id="distance">0 m</span></div>
+        <div class="hud-item"><span class="hud-label">Coins</span><span id="coins">0</span></div>
+        <div class="hud-item"><span class="hud-label">Score</span><span id="score">0</span></div>
+      </div>
+
+      <div id="popups"></div>
+
+      <div id="start-overlay" class="overlay">
+        <h1>Sky's Adventure</h1>
+        <p class="subtitle">Downhill Snowboarding</p>
+        <ul class="controls-list">
+          <li><span>Hold</span>Charge jump</li>
+          <li><span>Release</span>Launch</li>
+          <li><span>Tap in air</span>Spin trick</li>
+        </ul>
+        <p class="hint">Jump the rocks, ride the ramps, land your tricks.</p>
+        <button id="start-btn">Start Riding</button>
+      </div>
+
+      <div id="win-overlay" class="overlay hidden">
+        <h1>You made it down!</h1>
+        <p id="win-stats"></p>
+        <button id="retry-btn">Play Again</button>
+      </div>
+
+      <div id="crash-overlay" class="overlay hidden">
+        <h1>Wipeout!</h1>
+        <p id="crash-stats"></p>
+        <button id="retry-crash-btn">Try Again</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
