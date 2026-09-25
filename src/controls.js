@@ -3,25 +3,29 @@
  * - Press and hold (Space, click, or touch) while grounded to charge a jump;
  *   release to launch - longer hold = higher jump.
  * - Press while airborne to start a mid-air spin trick.
+ *
+ * This class only forwards input events; the actual jump/trick logic lives
+ * in Python (public/py/player.py), reached via the onStart/onRelease callbacks.
  */
 export class Controls {
-  constructor(target, player) {
+  constructor(target, { onStart, onRelease }) {
     this.target = target;
-    this.player = player;
+    this.onStart = onStart;
+    this.onRelease = onRelease;
 
     this.onDown = (e) => {
       e.preventDefault();
-      this.player.startCharge();
+      this.onStart();
     };
     this.onUp = (e) => {
       e.preventDefault();
-      this.player.releaseCharge();
+      this.onRelease();
     };
     this.onKeyDown = (e) => {
-      if (e.code === 'Space' && !e.repeat) this.player.startCharge();
+      if (e.code === 'Space' && !e.repeat) this.onStart();
     };
     this.onKeyUp = (e) => {
-      if (e.code === 'Space') this.player.releaseCharge();
+      if (e.code === 'Space') this.onRelease();
     };
 
     target.addEventListener('pointerdown', this.onDown);

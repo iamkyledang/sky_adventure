@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "A 2.5D downhill snowboarding game built with Three.js, inspired by Alto's Adventure.",
+  "description": "A 2.5D downhill snowboarding game inspired by Alto's Adventure. Game logic is real Python running in-browser via Pyodide; Three.js only renders.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

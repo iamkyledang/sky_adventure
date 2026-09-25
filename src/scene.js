@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { groundHeight, COURSE_LENGTH, OBSTACLES, COINS, FINISH_X } from './terrain.js';
 
 const SKY_TOP = 0x8ec9ff;
 const SKY_BOTTOM = 0xe8f6ff;
@@ -17,11 +16,8 @@ const MOUNTAIN_LAYERS = [
   { depthFactor: 0.6, z: -10, color: 0x86a9d6, amp: 7, freq: 0.045, baseY: -2, phase: 4.0 },
 ];
 
-const TERRAIN_SAMPLE_STEP = 2;
-const TERRAIN_PAD = 20; // extra ground drawn before start / after finish
-
-/** Builds a filled silhouette shape mesh from a height function sampled over [x0, x1]. */
-function buildSilhouette(x0, x1, heightFn, bottomY, color, step = TERRAIN_SAMPLE_STEP) {
+/** Builds a filled silhouette mesh from a height function sampled over [x0, x1]. Purely decorative - not game logic. */
+function buildSilhouette(x0, x1, heightFn, bottomY, color, step = 4) {
   const shape = new THREE.Shape();
   shape.moveTo(x0, bottomY);
   for (let x = x0; x <= x1; x += step) {
@@ -29,6 +25,19 @@ function buildSilhouette(x0, x1, heightFn, bottomY, color, step = TERRAIN_SAMPLE
   }
   shape.lineTo(x1, heightFn(x1));
   shape.lineTo(x1, bottomY);
+  shape.closePath();
+  const geo = new THREE.ShapeGeometry(shape);
+  const mat = new THREE.MeshBasicMaterial({ color });
+  return new THREE.Mesh(geo, mat);
+}
+
+/** Builds a filled silhouette mesh directly from precomputed [x, y] samples (the real course terrain, from Python). */
+function buildSilhouetteFromSamples(samples, bottomY, color) {
+  const shape = new THREE.Shape();
+  shape.moveTo(samples[0][0], bottomY);
+  for (const [x, y] of samples) shape.lineTo(x, y);
+  const last = samples[samples.length - 1];
+  shape.lineTo(last[0], bottomY);
   shape.closePath();
   const geo = new THREE.ShapeGeometry(shape);
   const mat = new THREE.MeshBasicMaterial({ color });
@@ -66,43 +75,39 @@ function buildSky() {
   return mesh;
 }
 
-function buildMountainLayers() {
+function buildMountainLayers(courseLength) {
   const layers = [];
   for (const cfg of MOUNTAIN_LAYERS) {
     const heightFn = (x) =>
       cfg.baseY + cfg.amp * Math.sin(x * cfg.freq + cfg.phase) + cfg.amp * 0.4 * Math.sin(x * cfg.freq * 2.3);
-    const mesh = buildSilhouette(-200, COURSE_LENGTH + 200, heightFn, -40, cfg.color, 4);
+    const mesh = buildSilhouette(-200, courseLength + 200, heightFn, -40, cfg.color, 4);
     mesh.position.z = cfg.z;
     layers.push({ mesh, depthFactor: cfg.depthFactor });
   }
   return layers;
 }
 
-function buildTerrain() {
+function buildTerrain(courseData) {
   const group = new THREE.Group();
-  const x0 = -TERRAIN_PAD;
-  const x1 = FINISH_X + TERRAIN_PAD;
 
-  const base = buildSilhouette(x0, x1, groundHeight, -60, SNOW_SHADE);
+  const base = buildSilhouetteFromSamples(courseData.ground_samples, -60, SNOW_SHADE);
   base.position.z = -0.5;
   group.add(base);
 
-  const top = buildSilhouette(x0, x1, groundHeight, -60, SNOW_COLOR);
+  const top = buildSilhouetteFromSamples(courseData.ground_samples, -60, SNOW_COLOR);
   top.position.z = -0.3;
   group.add(top);
 
   return group;
 }
 
-function buildObstacleMeshes() {
+function buildObstacleMeshes(courseData) {
   const group = new THREE.Group();
-  for (const o of OBSTACLES) {
+  for (const o of courseData.obstacles) {
     let mesh;
     if (o.type === 'rock') {
       const geo = new THREE.CircleGeometry(o.width / 2, 12, 0, Math.PI);
-      const mat = new THREE.MeshBasicMaterial({ color: ROCK_COLOR });
-      mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(o.x, groundHeight(o.x), 0.1);
+      mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: ROCK_COLOR }));
     } else {
       const shape = new THREE.Shape();
       shape.moveTo(-o.width / 2, 0);
@@ -110,28 +115,27 @@ function buildObstacleMeshes() {
       shape.lineTo(o.width / 2, o.height);
       shape.closePath();
       const geo = new THREE.ShapeGeometry(shape);
-      const mat = new THREE.MeshBasicMaterial({ color: RAMP_COLOR });
-      mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(o.x - o.width / 2, groundHeight(o.x - o.width / 2), 0.1);
+      mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: RAMP_COLOR }));
     }
+    mesh.position.set(o.anchor_x, o.ground_y, 0.1);
     group.add(mesh);
   }
   return group;
 }
 
-function buildCoinMeshes() {
+function buildCoinMeshes(courseData) {
   const coins = [];
   const geo = new THREE.CircleGeometry(0.35, 16);
   const mat = new THREE.MeshBasicMaterial({ color: COIN_COLOR });
-  for (const c of COINS) {
+  for (const c of courseData.coins) {
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(c.x, groundHeight(c.x) + c.height, 0.2);
-    coins.push({ mesh, x: c.x, collected: false });
+    mesh.position.set(c.x, c.y, 0.2);
+    coins.push({ mesh });
   }
   return coins;
 }
 
-function buildFinishFlag() {
+function buildFinishFlag(courseData) {
   const group = new THREE.Group();
   const poleGeo = new THREE.PlaneGeometry(0.15, 4);
   const poleMat = new THREE.MeshBasicMaterial({ color: FLAG_POLE_COLOR });
@@ -150,32 +154,28 @@ function buildFinishFlag() {
   flag.position.set(0, 0, 0.16);
   group.add(flag);
 
-  group.position.set(FINISH_X, groundHeight(FINISH_X), 0);
+  group.position.set(courseData.finish_x, courseData.finish_ground_y, 0);
   return group;
 }
 
-export function buildScene() {
+/** Builds the Three.js scene from course data produced by Python (public/py/game.py). Rendering only - no gameplay logic. */
+export function buildScene(courseData) {
   const scene = new THREE.Scene();
 
-  const sky = buildSky();
-  scene.add(sky);
+  scene.add(buildSky());
 
-  const mountainLayers = buildMountainLayers();
+  const mountainLayers = buildMountainLayers(courseData.course_length);
   mountainLayers.forEach((l) => scene.add(l.mesh));
 
-  const terrain = buildTerrain();
-  scene.add(terrain);
+  scene.add(buildTerrain(courseData));
+  scene.add(buildObstacleMeshes(courseData));
 
-  const obstacles = buildObstacleMeshes();
-  scene.add(obstacles);
-
-  const coins = buildCoinMeshes();
+  const coins = buildCoinMeshes(courseData);
   coins.forEach((c) => scene.add(c.mesh));
 
-  const finish = buildFinishFlag();
-  scene.add(finish);
+  scene.add(buildFinishFlag(courseData));
 
-  return { scene, mountainLayers, coins, sky };
+  return { scene, mountainLayers, coins };
 }
 
 export function createRenderer(canvas) {
