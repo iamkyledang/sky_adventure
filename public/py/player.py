@@ -16,7 +16,7 @@ JUMP_BASE = 8
 JUMP_CHARGE_MAX = 6.5  # added on top of JUMP_BASE at full charge
 MAX_CHARGE_TIME = 0.55  # seconds of holding to reach full charge
 RAMP_LAUNCH_BOOST = 11
-SPIN_SPEED = math.pi * 2.2  # radians/sec while spinning
+SPIN_SPEED = math.pi * 1  # radians/sec while spinning
 LANDING_TOLERANCE = 0.35  # radians of allowed rotation error on landing
 
 

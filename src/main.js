@@ -4,6 +4,7 @@ import { buildRiderMesh } from './riderView.js';
 import { Controls } from './controls.js';
 import { GameUI } from './ui.js';
 import * as pyBridge from './pyBridge.js';
+import lofiMusicUrl from './lofi_music.mp3';
 
 const canvas = document.getElementById('scene');
 const loadingOverlay = document.getElementById('loading-overlay');
@@ -13,6 +14,10 @@ const renderer = createRenderer(canvas);
 const camera = createCamera();
 const ui = new GameUI();
 const clock = new THREE.Clock();
+
+const music = new Audio(lofiMusicUrl);
+music.loop = true;
+music.volume = 0.4;
 
 const TRICK_LABELS = { 1: 'Flip!', 2: 'Double Flip!', 3: 'Triple Flip!' };
 
@@ -43,6 +48,10 @@ function beginGame() {
   ui.hideAllOverlays();
   running = true;
   clock.getDelta(); // discard idle-time delta accumulated on the start screen
+
+  if (music.paused) {
+    music.play().catch((err) => console.warn('Music playback blocked:', err));
+  }
 }
 
 function animate() {
